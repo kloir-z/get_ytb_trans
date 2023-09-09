@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import escape, request, jsonify
 
-def get_transcript(request):
+def get_ytb_trans(request):
     url = request.args.get('url')
     # Check if the clipboard content is a YouTube URL
     if not re.match(r'(https?://)?(www\.)?(youtube\.com|youtu\.?be)/.+$', url):
@@ -46,4 +46,6 @@ def get_transcript(request):
         for tr in transcript.fetch():
             full_text += tr['text'] + " "
 
-    return jsonify({'transcript': full_text})
+    response = jsonify({'transcript': full_text})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
