@@ -1,26 +1,47 @@
+from flask import Flask, request, render_template
+from get_ytb_trans import get_ytb_trans
+import json
 import requests
+import os
 
-def call_get_ytb_trans(youtube_url):
-    endpoint = "https://asia-northeast2-my-pj-20230703.cloudfunctions.net/get_ytb_trans"
-    params = {"url": youtube_url}
-    response = requests.get(endpoint, params=params)
+app = Flask(__name__)
 
-    if response.status_code == 200:
-        data = response.json()
-        return data['transcript']
+# .env ファイルから環境変数を読み込む
+from dotenv import load_dotenv
+load_dotenv()
+
+# 環境変数を取得
+endpoints = os.environ.get("ENDPOINTS")
+
+if endpoints is None:
+    raise EnvironmentError("The ENDPOINTS environment variable is not set.")
+else:
+    endpoints = endpoints.split(',')
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html', endpoints=endpoints)
+
+def fetch_content(url, endpoint):
+    if endpoint == "http://127.0.0.1:5000/get_ytb_trans":
+        response = get_ytb_trans(type('FakeRequest', (), {'args': {'url': url}}))
+        json_data = json.loads(response.data)
+        return json_data['transcript']
     else:
-        return f"Error: {response.status_code}, {response.text}"
+        response = requests.get(f"{endpoint}?url={url}")
+        json_data = response.json()
+        return json_data['transcript'] if response.status_code == 200 else f"Error: {response.text}"
 
-# 例としてのYouTube URLをここに入れる
-youtube_url = "https://youtu.be/6JLcPryAPTQ"
-result = call_get_ytb_trans(youtube_url)
-print(result)
+@app.route('/show_result', methods=['POST'])
+def show_result():
+    url = request.form['url']
+    endpoint = request.form['endpoint']
+    content = fetch_content(url, endpoint)
+    return render_template('index.html', content=content, endpoints=endpoints)
 
-# 【実行例】
-# > python .\test.py 
-# 動画タイトル: 【苦戦】日本は、世界一厳しい市場？イオンが賭ける謎のネットスーパー（Amazon／イトーヨーカドー／宅配）解説:冨岡久美子
-# 動画概要欄: 👇冨岡記者の詳しい解説記事はこちら【独占】イオンが賭ける「謎のECスーパー」に迫るhttps://bit.ly/3QsgNge【解説】ECスーパー成功のために大事な超基本的なことhttps://bit.ly/47hkF9I世界で最もネットスーパーの展開が難しい日本。そんな中、7月10日にイオンのネットスーパー 「...
-# 動画リンク: https://youtu.be/6JLcPryAPTQ
-# 
-# 動画文字起こし:
-# 野菜とかで一番出るじゃないですかその ネットスーパーの実力ってそもそも日本 だけじゃなく.......
+@app.route('/get_ytb_trans', methods=['GET'])
+def get_txt_from_url_route():
+    return get_ytb_trans(request)
+
+if __name__ == "__main__":
+    app.run(debug=True)
