@@ -2,7 +2,8 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import re
 import requests
 from bs4 import BeautifulSoup
-from flask import escape, request, jsonify
+from flask import jsonify
+
 
 def get_ytb_trans(request):
     url = request.args.get('url')
