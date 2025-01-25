@@ -27,6 +27,9 @@ def index():
 def fetch_content(url, endpoint):
     if endpoint == "http://127.0.0.1:5000/get_ytb_trans":
         response = get_ytb_trans(type("FakeRequest", (), {"args": {"url": url}}))
+        # responseがタプルの場合（エラー時）の処理を追加
+        if isinstance(response, tuple):
+            return f"Error: {response[0].json['error']}" if len(response) > 0 else "Unknown error occurred"
         json_data = json.loads(response.data)
         return json_data["transcript"]
     else:
