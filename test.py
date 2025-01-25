@@ -25,17 +25,33 @@ def index():
 
 
 def fetch_content(url, endpoint):
-    if endpoint == "http://127.0.0.1:5000/get_ytb_trans":
-        response = get_ytb_trans(type("FakeRequest", (), {"args": {"url": url}}))
-        # responseがタプルの場合（エラー時）の処理を追加
-        if isinstance(response, tuple):
-            return f"Error: {response[0].json['error']}" if len(response) > 0 else "Unknown error occurred"
-        json_data = json.loads(response.data)
-        return json_data["transcript"]
-    else:
-        response = requests.get(f"{endpoint}?url={url}")
-        json_data = response.json()
-        return json_data["transcript"] if response.status_code == 200 else f"Error: {response.text}"
+    try:
+        if endpoint == "http://127.0.0.1:5000/get_ytb_trans":
+            # ローカル環境用の処理
+            response = get_ytb_trans(type("FakeRequest", (), {"args": {"url": url}}))
+            if isinstance(response, tuple):
+                return f"Error: {response[0].json['error']}" if len(response) > 0 else "Unknown error occurred"
+            json_data = json.loads(response.data)
+            return json_data["transcript"]
+        else:
+            # Cloud Functions用の処理
+            response = requests.get(f"{endpoint}?url={url}")
+            # レスポンスの内容をデバッグ出力
+            print(f"Cloud Functions Response Status: {response.status_code}")
+            print(f"Cloud Functions Response Content: {response.text}")
+
+            if response.status_code != 200:
+                return f"Error: {response.text}"
+
+            try:
+                json_data = response.json()
+                return json_data.get("transcript", "Transcript not found in response")
+            except json.JSONDecodeError as e:
+                print(f"JSON Decode Error: {str(e)}")
+                return f"Error parsing response: {response.text}"
+    except Exception as e:
+        print(f"Error in fetch_content: {str(e)}")
+        return f"Error: {str(e)}"
 
 
 @app.route("/show_result", methods=["POST"])
